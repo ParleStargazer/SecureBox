@@ -113,7 +113,7 @@ Android 状态：
 APK：C:\Users\Parle\SecureBox-android-20260602.apk
 项目归档副本：dist\SecureBox-android.apk
 大小：81,738,803 bytes
-SHA256：C0E13DCFC735FD4DBEF52DAA0CFBF5E5768F5218A78548DF365411EC9810D07A
+SHA256：24C4D5FA58F36B3CFFFAD8BB0C69C0713445490D3F074FD0E6E1B135BDEDDB39
 apksigner verify --print-certs：通过，签名证书为 Android Debug 证书。
 aapt dump badging：包名 com.parlestargazer.securebox，minSdk 24，targetSdk 36，native-code arm64-v8a / armeabi-v7a / x86_64。
 ```
@@ -124,4 +124,22 @@ Android 安全边界说明：
 APK 包含 Flet/Android 默认 INTERNET 和 ACCESS_NETWORK_STATE 权限。
 SecureBox 仍按本地离线密码保险箱设计，不提供 Web 版本，不启动远程 Web 服务，不开放网络监听端口。
 当前 APK 用于课程演示和本地安装验证；如要应用商店发布，需要替换为正式 release keystore 并重新签名。
+```
+
+运行时空白屏修复：
+
+```text
+现象：Windows exe 启动后只有空白窗口，Android apk 启动后黑屏。
+原因：securebox/ui/app.py 使用了当前 Flet 0.85.2 中不存在的 ft.Icons.LOCK_SHIELD 和 ft.Icons.FOLDER_LOCK。
+影响：Flet 原生壳可以启动，但 Python target 在首屏构建时抛 AttributeError，导致界面没有成功渲染。
+修复：将首屏图标替换为 ft.Icons.SECURITY，将文件页图标替换为 ft.Icons.FOLDER。
+回归测试：tests/test_ui_app.py 增加 Flet 图标/颜色常量存在性扫描，避免后续 Flet 版本变动再次造成空白屏。
+源码短启动验证：python -m securebox 启动 10 秒后仍保持运行，stderr 无异常。
+Windows bundle 验证：更新 data\flutter_assets\app\app.zip 和 app.zip.hash 后，SecureBox.exe 启动 10 秒后仍保持运行。
+Windows zip 验证：C:\Users\Parle\SecureBox-windows-x64-20260602.zip 内部 app.zip 已确认包含 ft.Icons.SECURITY / ft.Icons.FOLDER。
+Android APK 验证：重新执行 flet build apk，日志显示 [19:21:54] Built .apk for Android OK。
+Android APK 内容验证：APK 内部 assets\flutter_assets\app\app.zip 已确认包含 ft.Icons.SECURITY / ft.Icons.FOLDER。
+Android APK 签名验证：apksigner verify --print-certs 通过。
+Android APK 新 SHA256：24C4D5FA58F36B3CFFFAD8BB0C69C0713445490D3F074FD0E6E1B135BDEDDB39。
+真机/模拟器安装验证：当前 adb devices 无设备连接，尚未执行安装运行验收。
 ```

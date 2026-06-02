@@ -117,7 +117,7 @@ class SecureBoxFletApp:
             ft.Container(
                 ft.Column(
                     [
-                        ft.Icon(ft.Icons.LOCK_SHIELD, size=58, color=ft.Colors.BLUE_700),
+                        ft.Icon(ft.Icons.SECURITY, size=58, color=ft.Colors.BLUE_700),
                         ft.Text("SecureBox", size=32, weight=ft.FontWeight.BOLD),
                         ft.Text(
                             "Local password manager",
@@ -167,7 +167,7 @@ class SecureBoxFletApp:
                                 content=self._generator_tab(),
                             ),
                             ft.Tab("Text", icon=ft.Icons.TEXT_FIELDS, content=self._text_tab()),
-                            ft.Tab("File", icon=ft.Icons.FOLDER_LOCK, content=self._file_tab()),
+                            ft.Tab("File", icon=ft.Icons.FOLDER, content=self._file_tab()),
                             ft.Tab(
                                 "Export",
                                 icon=ft.Icons.IMPORT_EXPORT,

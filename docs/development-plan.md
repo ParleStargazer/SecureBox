@@ -36,6 +36,13 @@ ruff 代码风格检查
 推荐 conda 开发环境：
 
 ```powershell
+conda env create -f environment.yml
+conda activate securebox
+```
+
+如果需要手动创建：
+
+```powershell
 conda create -n securebox python=3.12
 conda activate securebox
 python -m pip install --upgrade pip
@@ -592,4 +599,3 @@ fix: address final test and demo issues
 - 数据库和认证流程是保险箱的基础，应早于所有 UI。
 - 文件加密和导出是扩展功能，可以留到核心功能稳定后再做。
 - 每阶段都有独立 commit，可以按功能验收，也方便回滚。
-

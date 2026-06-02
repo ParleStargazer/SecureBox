@@ -135,7 +135,7 @@ class SecureBoxFletApp:
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=14,
                 ),
-                alignment=ft.alignment.center,
+                alignment=ft.Alignment(0, 0),
                 expand=True,
             )
         )
@@ -143,6 +143,13 @@ class SecureBoxFletApp:
 
     def _render_main(self) -> None:
         self.state.lock_service.mark_activity()
+        tab_items: list[tuple[str, ft.Icons, ft.Control]] = [
+            ("Vault", ft.Icons.KEY, self._vault_tab()),
+            ("Generator", ft.Icons.PASSWORD, self._generator_tab()),
+            ("Text", ft.Icons.TEXT_FIELDS, self._text_tab()),
+            ("File", ft.Icons.FOLDER, self._file_tab()),
+            ("Export", ft.Icons.IMPORT_EXPORT, self._export_tab()),
+        ]
         self.page.controls.clear()
         self.page.add(
             ft.Column(
@@ -156,24 +163,27 @@ class SecureBoxFletApp:
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
                     ft.Tabs(
+                        length=len(tab_items),
                         selected_index=0,
                         animation_duration=150,
                         expand=True,
-                        tabs=[
-                            ft.Tab("Vault", icon=ft.Icons.KEY, content=self._vault_tab()),
-                            ft.Tab(
-                                "Generator",
-                                icon=ft.Icons.PASSWORD,
-                                content=self._generator_tab(),
-                            ),
-                            ft.Tab("Text", icon=ft.Icons.TEXT_FIELDS, content=self._text_tab()),
-                            ft.Tab("File", icon=ft.Icons.FOLDER, content=self._file_tab()),
-                            ft.Tab(
-                                "Export",
-                                icon=ft.Icons.IMPORT_EXPORT,
-                                content=self._export_tab(),
-                            ),
-                        ],
+                        content=ft.Column(
+                            [
+                                ft.TabBar(
+                                    tabs=[
+                                        ft.Tab(label=label, icon=icon)
+                                        for label, icon, _ in tab_items
+                                    ],
+                                    scrollable=False,
+                                ),
+                                ft.TabBarView(
+                                    controls=[content for _, _, content in tab_items],
+                                    expand=True,
+                                ),
+                            ],
+                            expand=True,
+                            spacing=0,
+                        ),
                     ),
                 ],
                 expand=True,
@@ -264,7 +274,12 @@ class SecureBoxFletApp:
                     ft.Column(entry_controls, scroll=ft.ScrollMode.AUTO, spacing=4),
                     expand=True,
                     padding=12,
-                    border=ft.border.all(1, ft.Colors.GREY_300),
+                    border=ft.Border(
+                        top=ft.BorderSide(1, ft.Colors.GREY_300),
+                        right=ft.BorderSide(1, ft.Colors.GREY_300),
+                        bottom=ft.BorderSide(1, ft.Colors.GREY_300),
+                        left=ft.BorderSide(1, ft.Colors.GREY_300),
+                    ),
                     border_radius=8,
                 ),
                 ft.Container(

@@ -130,16 +130,19 @@ SecureBox 仍按本地离线密码保险箱设计，不提供 Web 版本，不�
 
 ```text
 现象：Windows exe 启动后只有空白窗口，Android apk 启动后黑屏。
-原因：securebox/ui/app.py 使用了当前 Flet 0.85.2 中不存在的 ft.Icons.LOCK_SHIELD 和 ft.Icons.FOLDER_LOCK。
-影响：Flet 原生壳可以启动，但 Python target 在首屏构建时抛 AttributeError，导致界面没有成功渲染。
-修复：将首屏图标替换为 ft.Icons.SECURITY，将文件页图标替换为 ft.Icons.FOLDER。
-回归测试：tests/test_ui_app.py 增加 Flet 图标/颜色常量存在性扫描，避免后续 Flet 版本变动再次造成空白屏。
+最初发现的风险点：securebox/ui/app.py 曾使用当前 Flet 0.85.2 中不存在的 ft.Icons.LOCK_SHIELD 和 ft.Icons.FOLDER_LOCK。
+持续空白屏的实际阻断点：桌面包 console.log 显示首屏渲染在 ft.alignment.center 抛 AttributeError；进一步回归测试发现登录后主界面还存在 ft.border.all 和旧版 ft.Tab(content=...) 写法不兼容。
+影响：Flet 原生壳可以启动，但 Python target 在界面构建时抛异常，导致 exe 白屏、apk 启动画面后黑屏。
+修复：将首屏居中改为 ft.Alignment(0, 0)，边框改为显式 ft.Border/ft.BorderSide，Tabs 改为 Flet 0.85 的 ft.Tabs + ft.TabBar + ft.TabBarView 结构；图标继续使用 ft.Icons.SECURITY / ft.Icons.FOLDER。
+回归测试：tests/test_ui_app.py 增加 Flet 符号扫描，并实际构造登录页和主界面，避免后续 Flet 版本变动再次造成空白屏。
 源码短启动验证：python -m securebox 启动 10 秒后仍保持运行，stderr 无异常。
-Windows bundle 验证：更新 data\flutter_assets\app\app.zip 和 app.zip.hash 后，SecureBox.exe 启动 10 秒后仍保持运行。
-Windows zip 验证：C:\Users\Parle\SecureBox-windows-x64-20260602.zip 内部 app.zip 已确认包含 ft.Icons.SECURITY / ft.Icons.FOLDER。
-Android APK 验证：重新执行 flet build apk，日志显示 [19:21:54] Built .apk for Android OK。
-Android APK 内容验证：APK 内部 assets\flutter_assets\app\app.zip 已确认包含 ft.Icons.SECURITY / ft.Icons.FOLDER。
+Windows bundle 验证：更新 data\flutter_assets\app\app.zip 和 app.zip.hash 后，SecureBox.exe 启动 8 秒后仍保持运行，console.log 为空。
+Windows zip 验证：C:\Users\Parle\SecureBox-windows-x64-20260602.zip 内部 app.zip 已确认包含 ft.Alignment(0, 0)、ft.Border、ft.TabBar、ft.TabBarView。
+Windows app.zip SHA256：7d7649f7715ba6250d4b97b333585719442c2aa16615e16bc8ba472c568bb5d8。
+Android APK 验证：重新执行 flet build apk，日志显示 [19:42:05] Built .apk for Android OK。
+Android APK 内容验证：APK 内部 assets\flutter_assets\app\app.zip 已确认包含 ft.Alignment(0, 0)、ft.Border、ft.TabBar、ft.TabBarView。
+Android APK app.zip.hash：c9c6ce0db915b09dd4e412d3f4b9c545cd03eed54c16899d672d3a9440eb38cd。
 Android APK 签名验证：apksigner verify --print-certs 通过。
-Android APK 新 SHA256：24C4D5FA58F36B3CFFFAD8BB0C69C0713445490D3F074FD0E6E1B135BDEDDB39。
-真机/模拟器安装验证：当前 adb devices 无设备连接，尚未执行安装运行验收。
+Android APK 新 SHA256：3163E80ECF0BD70736BF2919FA53F79B2A911179B5B0A32BFA0F759DE985B9DB。
+真机/模拟器安装验证：当前 adb devices 无设备连接；用户已手动确认本次 exe/apk 启动后能显示界面。
 ```

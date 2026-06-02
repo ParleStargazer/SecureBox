@@ -1,9 +1,26 @@
 import ast
 from pathlib import Path
+from types import SimpleNamespace
 
 import flet as ft
 
-from securebox.ui.app import SecureBoxAppState
+from securebox.ui.app import SecureBoxAppState, SecureBoxFletApp, build_app
+
+
+class FakePage:
+    def __init__(self) -> None:
+        self.controls = []
+        self.window = SimpleNamespace()
+        self.updated = 0
+
+    def add(self, *controls) -> None:
+        self.controls.extend(controls)
+
+    def update(self) -> None:
+        self.updated += 1
+
+    def set_clipboard(self, value: str) -> None:
+        self.clipboard = value
 
 
 def test_app_state_initializes_local_database(tmp_path) -> None:
@@ -25,11 +42,33 @@ def test_flet_symbol_references_exist() -> None:
             continue
         if not isinstance(node.value.value, ast.Name) or node.value.value.id != "ft":
             continue
-        if node.value.attr == "Icons":
-            checked.append(f"ft.Icons.{node.attr}")
-            assert hasattr(ft.Icons, node.attr), f"Missing Flet icon: {node.attr}"
-        elif node.value.attr == "Colors":
-            checked.append(f"ft.Colors.{node.attr}")
-            assert hasattr(ft.Colors, node.attr), f"Missing Flet color: {node.attr}"
+        namespace = node.value.attr
+        symbol = f"ft.{namespace}.{node.attr}"
+        checked.append(symbol)
+        assert hasattr(ft, namespace), f"Missing Flet namespace: ft.{namespace}"
+        assert hasattr(getattr(ft, namespace), node.attr), f"Missing Flet symbol: {symbol}"
 
     assert checked
+
+
+def test_auth_screen_renders_with_current_flet_api(tmp_path) -> None:
+    page = FakePage()
+
+    app = build_app(page, tmp_path / "securebox.sqlite3")
+
+    assert isinstance(app, SecureBoxFletApp)
+    assert page.controls
+    assert page.updated == 1
+
+
+def test_main_screen_renders_with_current_flet_api(tmp_path) -> None:
+    state = SecureBoxAppState.create(tmp_path / "securebox.sqlite3")
+    state.session = state.auth_service.initialize("correct horse battery staple")
+    state.lock_service.unlock()
+    page = FakePage()
+    app = SecureBoxFletApp(page, state)
+
+    app.render()
+
+    assert page.controls
+    assert page.updated == 1

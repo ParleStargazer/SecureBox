@@ -6,7 +6,9 @@ import sqlite3
 import threading
 import traceback
 from dataclasses import dataclass
+from functools import lru_cache
 from inspect import iscoroutinefunction
+from importlib import resources
 from pathlib import Path
 
 import flet as ft
@@ -36,6 +38,11 @@ from securebox.ui.theme import apply_theme
 from securebox.utils.errors import AuthenticationFailedError, SecureBoxError
 
 LanguageCode = str
+
+
+@lru_cache(maxsize=1)
+def _app_icon_bytes() -> bytes:
+    return resources.files("securebox.ui.assets").joinpath("icon.png").read_bytes()
 
 TRANSLATIONS: dict[LanguageCode, dict[str, str]] = {
     "zh": {
@@ -392,7 +399,11 @@ class SecureBoxFletApp:
                     ft.Container(
                         ft.Column(
                             [
-                                ft.Icon(ft.Icons.SECURITY, size=58, color=ft.Colors.BLUE_700),
+                                ft.Image(
+                                    src=_app_icon_bytes(),
+                                    width=96,
+                                    height=96,
+                                ),
                                 ft.Text("SecureBox", size=32, weight=ft.FontWeight.BOLD),
                                 ft.Text(
                                     self._t("subtitle"),

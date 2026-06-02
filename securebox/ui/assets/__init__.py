@@ -1,0 +1,1 @@
+"""Bundled UI image assets."""

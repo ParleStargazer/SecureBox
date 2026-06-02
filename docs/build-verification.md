@@ -90,7 +90,7 @@ flet build apk . `
 Android 状态：
 
 ```text
-已完成 APK 构建和签名校验。
+已完成 APK 构建、libpython ELF 修复、zipalign、签名校验和模拟器启动验证。
 ```
 
 关键过程：
@@ -110,10 +110,9 @@ Android 状态：
 已验证 Android 交付物：
 
 ```text
-APK：C:\Users\Parle\SecureBox-android-20260602.apk
-项目归档副本：dist\SecureBox-android.apk
-大小：81,738,803 bytes
-SHA256：24C4D5FA58F36B3CFFFAD8BB0C69C0713445490D3F074FD0E6E1B135BDEDDB39
+APK：dist\SecureBox-android.apk
+大小：49,485,991 bytes
+SHA256：14EA6DB66FD3BB2F09451A8B166DAA5501C089221F233BC89B77BEE8C2A532D8
 apksigner verify --print-certs：通过，签名证书为 Android Debug 证书。
 aapt dump badging：包名 com.parlestargazer.securebox，minSdk 24，targetSdk 36，native-code arm64-v8a / armeabi-v7a / x86_64。
 ```
@@ -143,8 +142,24 @@ Android APK 验证：重新执行 flet build apk，日志显示 [19:51:47] Built
 Android APK 内容验证：APK 内部 assets\flutter_assets\app\app.zip 已确认包含 ft.Alignment(0, 0)、ft.Border、ft.TabBar、ft.TabBarView。
 Android APK app.zip.hash：b498828cffc13fd441366f01e1ba6a54e46621467b075106094a17d252d2d4a3。
 Android APK 签名验证：apksigner verify --print-certs 通过。
-Android APK 新 SHA256：75669B0908F5AF3D4BA8AC29DB2469B083FC78DBE82C354305271D5B1AA8E1AD。
-真机/模拟器安装验证：当前 adb devices 无设备连接；用户已手动确认 exe 启动后能显示界面，apk 仍需安装新包复测。
-Android 黑屏补充修复：移动端改用 Flet 提供的 FLET_APP_STORAGE_DATA 私有数据目录保存数据库，避免依赖 Android Python 运行时的 Path.home()；移动端不再设置桌面窗口宽高；启动阶段异常会尽量渲染为 SecureBox startup error 页面，便于后续定位。
+Android APK 中间版本 SHA256：75669B0908F5AF3D4BA8AC29DB2469B083FC78DBE82C354305271D5B1AA8E1AD；该版本仍有后续动态库加载问题，最终产物见下节。
+真机/模拟器安装验证：用户已确认 exe 启动后能显示界面；apk 后续仍出现动态库加载黑屏，见下一节修复。
+Android 数据目录修复：移动端改用 Flet 提供的 FLET_APP_STORAGE_DATA 私有数据目录保存数据库，避免依赖 Android Python 运行时的 Path.home()；移动端不再设置桌面窗口宽高；启动阶段异常会尽量渲染为 SecureBox startup error 页面，便于后续定位。
 数据保存位置：Windows exe 默认保存到当前用户目录 C:\Users\<用户名>\.securebox\securebox.sqlite3，不保存在 exe 所在目录；Android apk 保存到应用私有数据目录的 securebox.sqlite3，通常类似 /data/user/0/com.parlestargazer.securebox/app_flutter/securebox.sqlite3，普通文件管理器不可直接访问。
+```
+
+Android 动态库黑屏修复：
+
+```text
+现象：apk 启动时先显示 Flet 图标，随后进入纯黑屏；logcat 停在 serious_python 准备加载 libpython3.12.so 附近，没有进入 SecureBox Python 业务代码。
+根因：当前 Flet/serious_python Android Python 运行时的 libpython3.12.so 存在 PT_LOAD 文件偏移和虚拟地址对齐不一致问题。Android linker 可能从错误文件位置读取 dynamic section，并报 empty/missing DT_HASH/DT_GNU_HASH，表现为 CPython 未加载、界面黑屏。
+修复工具：新增 tools\patch_android_libpython_elf.py 和 tools\patch_android_apk_libpython.py，对 APK 内 lib\arm64-v8a、lib\armeabi-v7a、lib\x86_64 下的 libpython3.12.so 插入必要 padding，更新 ELF header / program header / section header 文件偏移，并移除旧 META-INF 签名条目。
+打包要求：Flet 生成 APK 后必须先运行 patch_android_apk_libpython.py，再 zipalign，最后 apksigner 重新签名。
+最终 APK：dist\SecureBox-android.apk。
+最终 APK 大小：49,485,991 bytes。
+最终 APK SHA256：14EA6DB66FD3BB2F09451A8B166DAA5501C089221F233BC89B77BEE8C2A532D8。
+模拟器：adb 连接 127.0.0.1:5563，primaryCpuAbi=arm64-v8a。
+模拟器启动日志：build\logs\android-final-arm64-launch-20260602.log。
+模拟器截图：build\logs\android-screen-final-arm64.png。
+验证结果：logcat 出现 CPython loaded 和 after Py_Initialize()，截图显示 SecureBox 创建主密码页，不再黑屏。
 ```

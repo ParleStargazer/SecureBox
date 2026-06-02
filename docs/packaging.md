@@ -105,6 +105,30 @@ flet build apk . `
 build/apk
 ```
 
+当前 Flet/serious_python Android 运行时中的 `libpython3.12.so` 需要做一次 ELF
+LOAD 段偏移修复，否则部分 Android 链接器会在加载 CPython 前黑屏卡住，并在
+logcat 中出现 `empty/missing DT_HASH/DT_GNU_HASH` 一类错误。Flet 构建完成后执行：
+
+```powershell
+$builtApk = "C:\Users\Parle\SecureBox-build-20260602-170226\build\flutter\build\app\outputs\apk\release\app-release.apk"
+$unsignedApk = "build\apk-inspect\SecureBox-android-patched-unsigned.apk"
+$alignedApk = "build\apk-inspect\SecureBox-android-patched-aligned.apk"
+$finalApk = "dist\SecureBox-android.apk"
+
+python tools\patch_android_apk_libpython.py $builtApk $unsignedApk
+& "$env:ANDROID_HOME\build-tools\34.0.0\zipalign.exe" -p -f 4 $unsignedApk $alignedApk
+& "$env:ANDROID_HOME\build-tools\34.0.0\apksigner.bat" sign `
+  --ks "$env:USERPROFILE\.android\debug.keystore" `
+  --ks-pass pass:android `
+  --key-pass pass:android `
+  --ks-key-alias androiddebugkey `
+  --out $finalApk `
+  $alignedApk
+& "$env:ANDROID_HOME\build-tools\34.0.0\apksigner.bat" verify --print-certs $finalApk
+```
+
+课程演示可继续使用 Android Debug 证书；正式发布时应替换为 release keystore。
+
 本机已验证配置：
 
 ```text
@@ -118,8 +142,9 @@ Gradle 镜像：C:\Users\Parle\.gradle\init.gradle 中配置阿里云 google / g
 已验证 APK：
 
 ```text
-C:\Users\Parle\SecureBox-android-20260602.apk
 dist\SecureBox-android.apk
+大小：49,485,991 bytes
+SHA256：14EA6DB66FD3BB2F09451A8B166DAA5501C089221F233BC89B77BEE8C2A532D8
 ```
 
 验收：
@@ -134,7 +159,7 @@ dist\SecureBox-android.apk
 
 ## Android 风险说明
 
-Android APK 已完成构建和签名校验，但仍建议在真机或模拟器上补充运行验收：
+Android APK 已完成构建、签名校验和模拟器启动验证。后续在真机上补充运行验收时重点检查：
 
 ```text
 - 本地 SQLite 数据目录是否可写

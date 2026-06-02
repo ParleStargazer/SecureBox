@@ -1,165 +1,96 @@
 # 构建验证记录
 
-## 2026-06-02
+## 最终状态
 
-已验证：
+验证日期：2026-06-03
 
-```powershell
-python -m pytest
-python -m ruff check .
-flet --version
+```text
+pytest: 60 passed
+Windows zip: 已生成
+Android apk: 已生成
+Android 模拟器安装: 通过
+Android 真机图标刷新: 通过
+```
+
+## Windows
+
+交付物：
+
+```text
+dist\SecureBox-windows-x64.zip
+```
+
+验证哈希：
+
+```text
+SHA256: 55901EC41C00F7BBE4861248CE41AAFFBEC31242CCEFFBF08A29B27AFAB89F22
+```
+
+已处理问题：
+
+```text
+- Flet 0.85 不支持 dotted module 作为 build 入口，已保留根目录 main.py 作为薄入口。
+- 当前 Windows/Flet/serious_python 组合对中文路径不稳定，打包建议使用纯英文路径。
+- EXE 图标已替换为 SecureBox 蓝盾锁图标。
+- Windows bundle 内部 app.zip 已同步最新 UI Logo。
+```
+
+## Android
+
+交付物：
+
+```text
+dist\SecureBox-android.apk
+```
+
+验证信息：
+
+```text
+package: com.parlestargazer.securebox
+versionCode: 2
+versionName: 1.0.0
+minSdk: 24
+targetSdk: 36
+apkSigningVersion: 3
+SHA256: C7D5D61E90D8EE8E8C3391F80ADF8BA3570BCA4AA99E7168A907FFE0C1F91972
+```
+
+已处理问题：
+
+```text
+- Android 黑屏：修复 APK 内 libpython3.12.so 的 ELF PT_LOAD 偏移对齐问题。
+- APK 安装解析失败：确保 resources.arsc 不压缩并保持 4 字节对齐。
+- APK v2+ 签名：使用 apksig 生成 v1/v2/v3 签名，设备侧显示 apkSigningVersion=3。
+- Launcher 图标：替换 adaptive icon foreground、fallback mipmap、splash 和 Android 12 splash 图。
+- 真机图标缓存：将 versionCode 提升到 2，强制手机桌面重新读取应用图标。
+- 应用内 Logo：登录页改为使用 SecureBox 蓝盾锁图标资源。
+```
+
+模拟器验证：
+
+```text
+adb connect 127.0.0.1:5563
+adb install -r dist\SecureBox-android.apk
 ```
 
 结果：
 
 ```text
-pytest: 46 passed
-ruff: All checks passed
-Flet: 0.85.2
-Flutter target version reported by Flet CLI: 3.41.7
+Success
+versionCode=2
+apkSigningVersion=3
 ```
 
-Windows exe 构建尝试：
+## 测试
+
+最终测试命令：
 
 ```powershell
-flet build windows . `
-  --module-name main `
-  --project securebox `
-  --product SecureBox `
-  --artifact SecureBox `
-  --org com.parlestargazer `
-  --description "SecureBox local password manager" `
-  --skip-flutter-doctor `
-  --no-rich-output `
-  --yes
+python -m pytest
 ```
 
-构建状态：
+结果：
 
 ```text
-已完成 Windows bundle 验证。
-```
-
-关键过程：
-
-```text
-1. Flet 自动下载 Flutter SDK 时曾因网络/缓存得到无效 zip。
-2. 已手动下载并解压 Flutter 3.41.7 到 C:\Users\Parle\flutter\3.41.7。
-3. 原项目路径包含中文字符，serious_python 打包阶段会触发路径/编码问题。
-4. 将源码复制到 C:\Users\Parle\SecureBox-build-20260602-170226 后，app/app.zip 成功生成。
-5. Windows 原生构建生成 SecureBox.exe。
-6. CMake install 阶段因本机 VS CMake 访问 C:\Windows\System32\vcruntime140_1.dll 失败而中断。
-7. 仅在临时构建目录中将生成的 cmake_install.cmake 改为 C:/Windows/Sysnative/vcruntime140_1.dll 后，install 成功完成。
-```
-
-已验证 Windows 交付物：
-
-```text
-目录：C:\Users\Parle\SecureBox-windows-x64-20260602
-压缩包：C:\Users\Parle\SecureBox-windows-x64-20260602.zip
-短启动验证：SecureBox.exe 可启动并保持运行，随后测试进程已关闭。
-压缩包大小：约 32 MiB
-```
-
-补充：
-
-```text
-Flet 0.85 的 build 入口不支持 dotted module，例如 securebox.main 会被解析为 securebox.py。
-项目已提供根目录 main.py 作为 Flet build 入口，实际逻辑仍委托给 securebox.main。
-当前 Windows/Flet/serious_python 组合对中文路径不稳，构建和运行交付物建议放在纯英文路径。
-项目目录下 dist\SecureBox-windows-x64.zip 仅作本地归档副本；演示验收优先使用 C:\Users\Parle 下的英文路径交付物。
-如果正式环境中仍遇到 vcruntime140_1.dll install 失败，应安装/修复 Microsoft Visual C++ Redistributable 或使用可正确访问 64 位 System32 的 CMake/VS 工具链。
-项目不支持 Web 交付，未执行 flet build web / flet publish。
-```
-
-Android apk 构建尝试：
-
-```powershell
-flet build apk . `
-  --module-name main `
-  --project securebox `
-  --product SecureBox `
-  --artifact SecureBox `
-  --org com.parlestargazer `
-  --description "SecureBox local password manager" `
-  --skip-flutter-doctor `
-  --no-rich-output `
-  --yes
-```
-
-Android 状态：
-
-```text
-已完成 APK 构建、libpython ELF 修复、zipalign、签名校验和模拟器启动验证。
-```
-
-关键过程：
-
-```text
-1. Android SDK 位于 C:\Users\Parle\Android\sdk。
-2. 已安装 cmdline-tools;latest、platform-tools、platforms;android-35、build-tools;34.0.0。
-3. 已接受 Android SDK licenses。
-4. Gradle/Flutter 构建需要 NDK 27.0.12077973；首次自动下载得到截断 zip，7-Zip 测试报 Unexpected end of archive。
-5. 删除损坏的 ndk\27.0.12077973 半安装目录和 .temp\PackageOperation01 后，使用 sdkmanager 单独安装 ndk;27.0.12077973 成功。
-6. Maven Central 依赖解析曾出现 TLS handshake 失败；本机 C:\Users\Parle\.gradle\init.gradle 增加阿里云 google / gradle-plugin / public 镜像后，Gradle 配置阶段可解析依赖。
-7. 直接运行 gradlew help 会因缺少 SERIOUS_PYTHON_SITE_PACKAGES 失败，这是 Flet 未注入打包环境变量导致；完整 flet build apk 可正常注入并继续构建。
-8. 构建日志：F:\实验课\网络安全原理与实践\大作业\build\logs\flet-apk-20260602-190242.out.log。
-9. 日志显示：[19:10:41] Built .apk for Android OK。
-```
-
-已验证 Android 交付物：
-
-```text
-APK：dist\SecureBox-android.apk
-大小：49,485,991 bytes
-SHA256：14EA6DB66FD3BB2F09451A8B166DAA5501C089221F233BC89B77BEE8C2A532D8
-apksigner verify --print-certs：通过，签名证书为 Android Debug 证书。
-aapt dump badging：包名 com.parlestargazer.securebox，minSdk 24，targetSdk 36，native-code arm64-v8a / armeabi-v7a / x86_64。
-```
-
-Android 安全边界说明：
-
-```text
-APK 包含 Flet/Android 默认 INTERNET 和 ACCESS_NETWORK_STATE 权限。
-SecureBox 仍按本地离线密码保险箱设计，不提供 Web 版本，不启动远程 Web 服务，不开放网络监听端口。
-当前 APK 用于课程演示和本地安装验证；如要应用商店发布，需要替换为正式 release keystore 并重新签名。
-```
-
-运行时空白屏修复：
-
-```text
-现象：Windows exe 启动后只有空白窗口，Android apk 启动后黑屏。
-最初发现的风险点：securebox/ui/app.py 曾使用当前 Flet 0.85.2 中不存在的 ft.Icons.LOCK_SHIELD 和 ft.Icons.FOLDER_LOCK。
-持续空白屏的实际阻断点：桌面包 console.log 显示首屏渲染在 ft.alignment.center 抛 AttributeError；进一步回归测试发现登录后主界面还存在 ft.border.all 和旧版 ft.Tab(content=...) 写法不兼容。
-影响：Flet 原生壳可以启动，但 Python target 在界面构建时抛异常，导致 exe 白屏、apk 启动画面后黑屏。
-修复：将首屏居中改为 ft.Alignment(0, 0)，边框改为显式 ft.Border/ft.BorderSide，Tabs 改为 Flet 0.85 的 ft.Tabs + ft.TabBar + ft.TabBarView 结构；图标继续使用 ft.Icons.SECURITY / ft.Icons.FOLDER。
-回归测试：tests/test_ui_app.py 增加 Flet 符号扫描，并实际构造登录页和主界面，避免后续 Flet 版本变动再次造成空白屏。
-源码短启动验证：python -m securebox 启动 10 秒后仍保持运行，stderr 无异常。
-Windows bundle 验证：更新 data\flutter_assets\app\app.zip 和 app.zip.hash 后，SecureBox.exe 启动 8 秒后仍保持运行，console.log 为空。
-Windows zip 验证：C:\Users\Parle\SecureBox-windows-x64-20260602.zip 内部 app.zip 已确认包含 ft.Alignment(0, 0)、ft.Border、ft.TabBar、ft.TabBarView。
-Windows app.zip SHA256：aa0c72a9322e9b45d1524277b0a22cf8830ad5617f1bf4023c23e1408eafd328。
-Android APK 验证：重新执行 flet build apk，日志显示 [19:51:47] Built .apk for Android OK。
-Android APK 内容验证：APK 内部 assets\flutter_assets\app\app.zip 已确认包含 ft.Alignment(0, 0)、ft.Border、ft.TabBar、ft.TabBarView。
-Android APK app.zip.hash：b498828cffc13fd441366f01e1ba6a54e46621467b075106094a17d252d2d4a3。
-Android APK 签名验证：apksigner verify --print-certs 通过。
-Android APK 中间版本 SHA256：75669B0908F5AF3D4BA8AC29DB2469B083FC78DBE82C354305271D5B1AA8E1AD；该版本仍有后续动态库加载问题，最终产物见下节。
-真机/模拟器安装验证：用户已确认 exe 启动后能显示界面；apk 后续仍出现动态库加载黑屏，见下一节修复。
-Android 数据目录修复：移动端改用 Flet 提供的 FLET_APP_STORAGE_DATA 私有数据目录保存数据库，避免依赖 Android Python 运行时的 Path.home()；移动端不再设置桌面窗口宽高；启动阶段异常会尽量渲染为 SecureBox startup error 页面，便于后续定位。
-数据保存位置：Windows exe 默认保存到当前用户目录 C:\Users\<用户名>\.securebox\securebox.sqlite3，不保存在 exe 所在目录；Android apk 保存到应用私有数据目录的 securebox.sqlite3，通常类似 /data/user/0/com.parlestargazer.securebox/app_flutter/securebox.sqlite3，普通文件管理器不可直接访问。
-```
-
-Android 动态库黑屏修复：
-
-```text
-现象：apk 启动时先显示 Flet 图标，随后进入纯黑屏；logcat 停在 serious_python 准备加载 libpython3.12.so 附近，没有进入 SecureBox Python 业务代码。
-根因：当前 Flet/serious_python Android Python 运行时的 libpython3.12.so 存在 PT_LOAD 文件偏移和虚拟地址对齐不一致问题。Android linker 可能从错误文件位置读取 dynamic section，并报 empty/missing DT_HASH/DT_GNU_HASH，表现为 CPython 未加载、界面黑屏。
-修复工具：新增 tools\patch_android_libpython_elf.py 和 tools\patch_android_apk_libpython.py，对 APK 内 lib\arm64-v8a、lib\armeabi-v7a、lib\x86_64 下的 libpython3.12.so 插入必要 padding，更新 ELF header / program header / section header 文件偏移，并移除旧 META-INF 签名条目。
-打包要求：Flet 生成 APK 后必须先运行 patch_android_apk_libpython.py，再 zipalign，最后 apksigner 重新签名。
-最终 APK：dist\SecureBox-android.apk。
-最终 APK 大小：49,485,991 bytes。
-最终 APK SHA256：14EA6DB66FD3BB2F09451A8B166DAA5501C089221F233BC89B77BEE8C2A532D8。
-模拟器：adb 连接 127.0.0.1:5563，primaryCpuAbi=arm64-v8a。
-模拟器启动日志：build\logs\android-final-arm64-launch-20260602.log。
-模拟器截图：build\logs\android-screen-final-arm64.png。
-验证结果：logcat 出现 CPython loaded 和 after Py_Initialize()，截图显示 SecureBox 创建主密码页，不再黑屏。
+60 passed
 ```

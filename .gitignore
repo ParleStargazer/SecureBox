@@ -11,6 +11,7 @@ __pycache__/
 venv/
 env/
 .conda/
+__pypackages__/
 
 # Test and tooling caches
 .pytest_cache/
@@ -24,6 +25,19 @@ build/
 dist/
 *.egg-info/
 *.spec
+.dart_tool/
+.gradle/
+.flet/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.apk
+*.aab
+*.ap_
+*.idsig
+*.unsigned
+*.aligned
+*.tmp
+$tmp/
 
 # Local runtime data
 data/
@@ -45,6 +59,8 @@ backups/
 *.key
 *.pem
 *.p12
+*.jks
+*.keystore
 
 # Logs
 logs/
@@ -56,4 +72,3 @@ Thumbs.db
 desktop.ini
 .vscode/
 .idea/
-

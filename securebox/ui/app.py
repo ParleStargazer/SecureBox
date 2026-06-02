@@ -7,8 +7,8 @@ import threading
 import traceback
 from dataclasses import dataclass
 from functools import lru_cache
-from inspect import iscoroutinefunction
 from importlib import resources
+from inspect import iscoroutinefunction
 from pathlib import Path
 
 import flet as ft

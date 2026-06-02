@@ -90,17 +90,38 @@ flet build apk . `
 Android 状态：
 
 ```text
-未生成 APK。
-JDK 安装完成，Python app 打包完成，图标和 splash 生成完成。
-Flutter Android 构建阶段报错：[!] No Android SDK found. Try setting the ANDROID_HOME environment variable.
+已完成 APK 构建和签名校验。
 ```
 
-后续条件：
+关键过程：
 
 ```text
-1. 安装 Android SDK command-line tools、platforms、build-tools、platform-tools。
-2. 设置 ANDROID_HOME 指向 Android SDK 目录。
-3. 接受 Android SDK licenses。
-4. 在纯英文路径下重新执行 flet build apk。
-5. APK 仍需额外验证 cryptography 和 argon2-cffi 的 Android 二进制依赖兼容性。
+1. Android SDK 位于 C:\Users\Parle\Android\sdk。
+2. 已安装 cmdline-tools;latest、platform-tools、platforms;android-35、build-tools;34.0.0。
+3. 已接受 Android SDK licenses。
+4. Gradle/Flutter 构建需要 NDK 27.0.12077973；首次自动下载得到截断 zip，7-Zip 测试报 Unexpected end of archive。
+5. 删除损坏的 ndk\27.0.12077973 半安装目录和 .temp\PackageOperation01 后，使用 sdkmanager 单独安装 ndk;27.0.12077973 成功。
+6. Maven Central 依赖解析曾出现 TLS handshake 失败；本机 C:\Users\Parle\.gradle\init.gradle 增加阿里云 google / gradle-plugin / public 镜像后，Gradle 配置阶段可解析依赖。
+7. 直接运行 gradlew help 会因缺少 SERIOUS_PYTHON_SITE_PACKAGES 失败，这是 Flet 未注入打包环境变量导致；完整 flet build apk 可正常注入并继续构建。
+8. 构建日志：F:\实验课\网络安全原理与实践\大作业\build\logs\flet-apk-20260602-190242.out.log。
+9. 日志显示：[19:10:41] Built .apk for Android OK。
+```
+
+已验证 Android 交付物：
+
+```text
+APK：C:\Users\Parle\SecureBox-android-20260602.apk
+项目归档副本：dist\SecureBox-android.apk
+大小：81,738,803 bytes
+SHA256：C0E13DCFC735FD4DBEF52DAA0CFBF5E5768F5218A78548DF365411EC9810D07A
+apksigner verify --print-certs：通过，签名证书为 Android Debug 证书。
+aapt dump badging：包名 com.parlestargazer.securebox，minSdk 24，targetSdk 36，native-code arm64-v8a / armeabi-v7a / x86_64。
+```
+
+Android 安全边界说明：
+
+```text
+APK 包含 Flet/Android 默认 INTERNET 和 ACCESS_NETWORK_STATE 权限。
+SecureBox 仍按本地离线密码保险箱设计，不提供 Web 版本，不启动远程 Web 服务，不开放网络监听端口。
+当前 APK 用于课程演示和本地安装验证；如要应用商店发布，需要替换为正式 release keystore 并重新签名。
 ```

@@ -14,6 +14,7 @@ from securebox.db.connection import connect_database
 from securebox.db.schema import initialize_schema
 from securebox.services.auth_service import AuthService, VaultSession
 from securebox.services.clipboard_service import ClipboardAutoClearService
+from securebox.services.export_service import export_entries_to_file, import_entries_from_file
 from securebox.services.lock_service import IdleLockService
 from securebox.services.password_generator import (
     PasswordGeneratorOptions,
@@ -164,6 +165,11 @@ class SecureBoxFletApp:
                             ),
                             ft.Tab("Text", icon=ft.Icons.TEXT_FIELDS, content=self._text_tab()),
                             ft.Tab("File", icon=ft.Icons.FOLDER_LOCK, content=self._file_tab()),
+                            ft.Tab(
+                                "Export",
+                                icon=ft.Icons.IMPORT_EXPORT,
+                                content=self._export_tab(),
+                            ),
                         ],
                     ),
                 ],
@@ -431,6 +437,60 @@ class SecureBoxFletApp:
                             "Decrypt file",
                             icon=ft.Icons.LOCK_OPEN,
                             on_click=decrypt,
+                        ),
+                    ]
+                ),
+                status,
+            ],
+            spacing=12,
+            expand=True,
+        )
+
+    def _export_tab(self) -> ft.Control:
+        path = ft.TextField(label="Export / import file path", expand=True)
+        password = ft.TextField(
+            label="Export password",
+            password=True,
+            can_reveal_password=True,
+            width=300,
+        )
+        status = ft.Text("", color=ft.Colors.GREY_700)
+
+        def export(_: ft.ControlEvent) -> None:
+            try:
+                count = export_entries_to_file(
+                    self._vault(),
+                    path.value or "",
+                    password.value or "",
+                )
+                status.value = f"Exported {count} encrypted entries."
+                self.page.update()
+            except (OSError, ValueError, SecureBoxError) as exc:
+                self._snack(str(exc))
+
+        def import_entries(_: ft.ControlEvent) -> None:
+            try:
+                count = import_entries_from_file(
+                    self._vault(),
+                    path.value or "",
+                    password.value or "",
+                )
+                status.value = f"Imported {count} entries."
+                self.page.update()
+            except (OSError, ValueError, SecureBoxError) as exc:
+                self._snack(str(exc))
+
+        return ft.Column(
+            [
+                path,
+                password,
+                ft.Row(
+                    [
+                        ft.FilledButton("Export", icon=ft.Icons.UPLOAD_FILE, on_click=export),
+                        ft.OutlinedButton(
+                            "Import",
+                            icon=ft.Icons.DOWNLOAD,
+                            on_click=import_entries,
                         ),
                     ]
                 ),

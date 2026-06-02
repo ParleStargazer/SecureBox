@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -36,6 +37,7 @@ from securebox.utils.errors import AuthenticationFailedError, SecureBoxError
 @dataclass
 class SecureBoxAppState:
     db_path: Path
+    connection: sqlite3.Connection
     auth_service: AuthService
     lock_service: IdleLockService
     clipboard_service: ClipboardAutoClearService
@@ -49,6 +51,7 @@ class SecureBoxAppState:
         initialize_schema(connection)
         return cls(
             db_path=path,
+            connection=connection,
             auth_service=AuthService(connection),
             lock_service=IdleLockService(),
             clipboard_service=ClipboardAutoClearService(),
@@ -99,7 +102,7 @@ class SecureBoxFletApp:
                     self.state.session = self.state.auth_service.initialize(password.value or "")
                 self.state.lock_service.unlock()
                 self.vault_service = VaultService(
-                    self.state.auth_service._config_repository._connection,
+                    self.state.connection,
                     self.state.session.data_key,
                 )
                 self.render()
@@ -509,7 +512,7 @@ class SecureBoxFletApp:
     def _vault(self) -> VaultService:
         if self.vault_service is None:
             self.vault_service = VaultService(
-                self.state.auth_service._config_repository._connection,
+                self.state.connection,
                 self._session().data_key,
             )
         return self.vault_service

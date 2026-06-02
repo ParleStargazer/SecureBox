@@ -1,6 +1,7 @@
 argon2-cffi>=23.1.0
 cryptography>=42.0.0
 flet>=0.83.0
+flet-cli>=0.83.0
 pytest>=8.2.0
 ruff>=0.5.0
 zxcvbn>=4.4.28

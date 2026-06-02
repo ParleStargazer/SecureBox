@@ -45,6 +45,8 @@ TRANSLATIONS: dict[LanguageCode, dict[str, str]] = {
         "show_password": "显示密码",
         "unlock": "解锁",
         "create_vault": "创建金库",
+        "error_title": "提示",
+        "unlock_failed": "解锁失败",
         "password_mismatch": "两次输入的主密码不一致。",
         "password_incorrect_delay": "主密码不正确。重试等待：{delay:.0f} 秒。",
         "switch_language": "Switch to English",
@@ -68,8 +70,12 @@ TRANSLATIONS: dict[LanguageCode, dict[str, str]] = {
         "edit": "编辑",
         "delete": "删除",
         "no_entries": "还没有密码条目。",
+        "password_entries": "密码条目",
         "save": "保存",
         "new": "新建",
+        "new_entry": "新建密码",
+        "edit_entry": "编辑密码",
+        "cancel": "取消",
         "length": "长度",
         "symbols": "符号",
         "generated_password": "生成的密码",
@@ -121,6 +127,8 @@ TRANSLATIONS: dict[LanguageCode, dict[str, str]] = {
         "show_password": "Show password",
         "unlock": "Unlock",
         "create_vault": "Create vault",
+        "error_title": "Notice",
+        "unlock_failed": "Unlock failed",
         "password_mismatch": "Master passwords do not match.",
         "password_incorrect_delay": "Master password is incorrect. Retry delay: {delay:.0f}s.",
         "switch_language": "切换到中文",
@@ -144,8 +152,12 @@ TRANSLATIONS: dict[LanguageCode, dict[str, str]] = {
         "edit": "Edit",
         "delete": "Delete",
         "no_entries": "No entries yet.",
+        "password_entries": "Password entries",
         "save": "Save",
         "new": "New",
+        "new_entry": "New password",
+        "edit_entry": "Edit password",
+        "cancel": "Cancel",
         "length": "Length",
         "symbols": "Symbols",
         "generated_password": "Generated password",
@@ -224,6 +236,7 @@ class SecureBoxAppState:
     retry_delay_service: RetryDelayService
     session: VaultSession | None = None
     language: LanguageCode = "zh"
+    selected_tab_index: int = 0
 
     @classmethod
     def create(cls, db_path: str | Path | None = None) -> SecureBoxAppState:
@@ -255,6 +268,16 @@ class SecureBoxFletApp:
     def _toggle_language(self, _: ft.ControlEvent | None = None) -> None:
         self.state.language = "en" if self.state.language == "zh" else "zh"
         self.render()
+
+    def _handle_tab_change(self, event: ft.ControlEvent) -> None:
+        try:
+            self.state.selected_tab_index = int(event.data)
+        except (TypeError, ValueError):
+            self.state.selected_tab_index = getattr(
+                event.control,
+                "selected_index",
+                self.state.selected_tab_index,
+            )
 
     def _language_button(self) -> ft.Control:
         return ft.IconButton(
@@ -340,7 +363,10 @@ class SecureBoxFletApp:
                     self.state.retry_delay_service.record_success()
                 else:
                     if password.value != confirm.value:
-                        self._snack(self._t("password_mismatch"))
+                        self._show_message_dialog(
+                            self._t("error_title"),
+                            self._t("password_mismatch"),
+                        )
                         return
                     self.state.session = self.state.auth_service.initialize(password.value or "")
                 self.state.lock_service.unlock()
@@ -351,9 +377,12 @@ class SecureBoxFletApp:
                 self.render()
             except AuthenticationFailedError:
                 delay = self.state.retry_delay_service.record_failure()
-                self._snack(self._t("password_incorrect_delay", delay=delay))
+                self._show_message_dialog(
+                    self._t("unlock_failed"),
+                    self._t("password_incorrect_delay", delay=delay),
+                )
             except SecureBoxError as exc:
-                self._snack(str(exc))
+                self._show_message_dialog(self._t("error_title"), str(exc))
 
         self.page.controls.clear()
         self.page.add(
@@ -402,6 +431,10 @@ class SecureBoxFletApp:
             (self._t("file"), ft.Icons.FOLDER, self._file_tab()),
             (self._t("export"), ft.Icons.IMPORT_EXPORT, self._export_tab()),
         ]
+        self.state.selected_tab_index = min(
+            max(self.state.selected_tab_index, 0),
+            len(tab_items) - 1,
+        )
         self.page.controls.clear()
         self.page.add(
             ft.Column(
@@ -418,7 +451,8 @@ class SecureBoxFletApp:
                     ),
                     ft.Tabs(
                         length=len(tab_items),
-                        selected_index=0,
+                        selected_index=self.state.selected_tab_index,
+                        on_change=self._handle_tab_change,
                         animation_duration=150,
                         expand=True,
                         content=ft.Column(
@@ -456,55 +490,78 @@ class SecureBoxFletApp:
         service = self._vault()
         entries = service.list_entries()
         is_desktop = self._is_desktop()
-        short_field_width = 220 if is_desktop else None
-        url_width = 260 if is_desktop else None
-        note_width = 360 if is_desktop else None
-        form_width = 390 if is_desktop else None
-        title = ft.TextField(label=self._t("title"), width=short_field_width)
-        username = ft.TextField(label=self._t("username"), width=short_field_width)
-        password = ft.TextField(
-            label=self._t("password"),
-            width=short_field_width,
-            password=True,
-            can_reveal_password=True,
-        )
-        url = ft.TextField(label=self._t("url"), width=url_width)
-        note = ft.TextField(
-            label=self._t("note"),
-            width=note_width,
-            multiline=True,
-            min_lines=2,
-            max_lines=4,
-        )
 
-        def clear_form() -> None:
-            self.selected_entry_id = None
-            for field in (title, username, password, url, note):
-                field.value = ""
-
-        def save(_: ft.ControlEvent) -> None:
-            draft = PasswordEntryDraft(
-                title=title.value or "",
-                username=username.value or "",
-                password=password.value or "",
-                url=url.value or "",
-                note=note.value or "",
+        def open_entry_dialog(entry: PasswordEntry | None = None) -> None:
+            title = ft.TextField(
+                label=self._t("title"),
+                value=entry.title if entry else "",
+                data="entry-title",
             )
-            if self.selected_entry_id is None:
-                service.create_entry(draft)
-                self._snack(self._t("entry_created"))
-            else:
-                service.update_entry(self.selected_entry_id, draft)
-                self._snack(self._t("entry_updated"))
-            self._render_main()
+            username = ft.TextField(
+                label=self._t("username"),
+                value=entry.username if entry else "",
+                data="entry-username",
+            )
+            password = ft.TextField(
+                label=self._t("password"),
+                value=entry.password if entry else "",
+                password=True,
+                can_reveal_password=True,
+                data="entry-password",
+            )
+            url = ft.TextField(
+                label=self._t("url"),
+                value=entry.url if entry else "",
+                data="entry-url",
+            )
+            note = ft.TextField(
+                label=self._t("note"),
+                value=entry.note if entry else "",
+                multiline=True,
+                min_lines=2,
+                max_lines=4,
+                data="entry-note",
+            )
 
-        def fill(entry: PasswordEntry) -> None:
-            self.selected_entry_id = entry.id
-            title.value = entry.title
-            username.value = entry.username
-            password.value = entry.password
-            url.value = entry.url
-            note.value = entry.note
+            def save(_: ft.ControlEvent) -> None:
+                draft = PasswordEntryDraft(
+                    title=title.value or "",
+                    username=username.value or "",
+                    password=password.value or "",
+                    url=url.value or "",
+                    note=note.value or "",
+                )
+                if entry is None:
+                    service.create_entry(draft)
+                    message = self._t("entry_created")
+                else:
+                    service.update_entry(entry.id, draft)
+                    message = self._t("entry_updated")
+                self._close_dialog()
+                self._render_main()
+                self._snack(message)
+
+            dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Text(self._t("new_entry") if entry is None else self._t("edit_entry")),
+                content=ft.Column(
+                    [title, username, password, url, note],
+                    spacing=10,
+                    tight=True,
+                    width=520 if is_desktop else 320,
+                ),
+                actions=[
+                    ft.TextButton(self._t("cancel"), on_click=lambda _: self._close_dialog()),
+                    ft.FilledButton(
+                        self._t("save"),
+                        icon=ft.Icons.SAVE,
+                        on_click=save,
+                        data="save-entry",
+                    ),
+                ],
+                scrollable=True,
+            )
+            self.page.show_dialog(dialog)
             self.page.update()
 
         def delete(entry: PasswordEntry) -> None:
@@ -523,7 +580,8 @@ class SecureBoxFletApp:
                 ft.IconButton(
                     ft.Icons.EDIT,
                     tooltip=self._t("edit"),
-                    on_click=lambda _, item=entry: fill(item),
+                    on_click=lambda _, item=entry: open_entry_dialog(item),
+                    data="edit-entry",
                 ),
                 ft.IconButton(
                     ft.Icons.DELETE,
@@ -573,40 +631,25 @@ class SecureBoxFletApp:
             ),
             border_radius=8,
         )
-        form = ft.Container(
-            ft.Column(
-                [
-                    title,
-                    username,
-                    password,
-                    url,
-                    note,
-                    ft.Row(
-                        [
-                            ft.FilledButton(
-                                self._t("save"),
-                                icon=ft.Icons.SAVE,
-                                on_click=save,
-                            ),
-                            ft.OutlinedButton(
-                                self._t("new"),
-                                icon=ft.Icons.ADD,
-                                on_click=lambda _: clear_form(),
-                            ),
-                        ],
-                        wrap=True,
-                    ),
-                ],
-                spacing=10,
-            ),
-            width=form_width,
-            padding=12,
+
+        toolbar = ft.Row(
+            [
+                ft.Text(self._t("password_entries"), size=16, weight=ft.FontWeight.BOLD),
+                ft.Container(expand=True),
+                ft.FilledButton(
+                    self._t("new"),
+                    icon=ft.Icons.ADD,
+                    on_click=lambda _: open_entry_dialog(),
+                    data="new-entry",
+                ),
+            ],
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
         if not is_desktop:
             return ft.Column(
                 [
-                    form,
+                    toolbar,
                     entry_list,
                 ],
                 expand=True,
@@ -614,12 +657,13 @@ class SecureBoxFletApp:
                 scroll=ft.ScrollMode.AUTO,
             )
 
-        return ft.Row(
+        return ft.Column(
             [
+                toolbar,
                 entry_list,
-                form,
             ],
             expand=True,
+            spacing=10,
         )
 
     def _generator_tab(self) -> ft.Control:
@@ -877,6 +921,18 @@ class SecureBoxFletApp:
         self.vault_service = None
         self.state.lock_service.lock()
         self.render()
+
+    def _show_message_dialog(self, title: str, message: str) -> None:
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(title),
+            content=ft.Text(message, selectable=True),
+            actions=[
+                ft.TextButton(self._t("close"), on_click=lambda _: self._close_dialog()),
+            ],
+        )
+        self.page.show_dialog(dialog)
+        self.page.update()
 
     def _show_help(self, _: ft.ControlEvent | None = None) -> None:
         sections: list[ft.Control] = []

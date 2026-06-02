@@ -84,7 +84,7 @@ def iter_controls(control):
 
 def find_controls(page: FakePage, control_type: type) -> list:
     found = []
-    for control in page.controls:
+    for control in [*page.controls, *page.dialogs]:
         found.extend(item for item in iter_controls(control) if isinstance(item, control_type))
     return found
 
@@ -180,6 +180,27 @@ def test_language_toggle_rerenders_english_labels(tmp_path) -> None:
     assert "Confirm master password" in labels
 
 
+def test_wrong_master_password_opens_error_dialog(tmp_path) -> None:
+    state = SecureBoxAppState.create(tmp_path / "securebox.sqlite3")
+    state.auth_service.initialize("correct horse battery staple")
+    page = FakePage()
+    app = SecureBoxFletApp(page, state)
+
+    app.render()
+
+    password = next(
+        field for field in find_controls(page, ft.TextField) if field.label == "主密码"
+    )
+    password.value = "wrong password"
+    submit = next(button for button in find_controls(page, ft.FilledButton))
+    submit.on_click(None)
+
+    assert len(page.dialogs) == 1
+    dialog_text = {text.value for text in find_controls(page, ft.Text)}
+    assert "解锁失败" in dialog_text
+    assert any("主密码不正确" in value for value in dialog_text)
+
+
 def test_main_screen_renders_with_current_flet_api(tmp_path) -> None:
     state = SecureBoxAppState.create(tmp_path / "securebox.sqlite3")
     state.session = state.auth_service.initialize("correct horse battery staple")
@@ -191,6 +212,23 @@ def test_main_screen_renders_with_current_flet_api(tmp_path) -> None:
 
     assert page.controls
     assert page.updated == 1
+
+
+def test_language_toggle_preserves_selected_main_tab(tmp_path) -> None:
+    state = SecureBoxAppState.create(tmp_path / "securebox.sqlite3")
+    state.session = state.auth_service.initialize("correct horse battery staple")
+    state.lock_service.unlock()
+    page = FakePage()
+    app = SecureBoxFletApp(page, state)
+    app.render()
+    app._handle_tab_change(SimpleNamespace(data="2", control=SimpleNamespace(selected_index=2)))
+
+    app._toggle_language()
+
+    tabs = next(control for control in find_controls(page, ft.Tabs))
+    assert app.state.language == "en"
+    assert app.state.selected_tab_index == 2
+    assert tabs.selected_index == 2
 
 
 def test_mobile_main_screen_uses_compact_lock_button(tmp_path) -> None:
@@ -207,6 +245,81 @@ def test_mobile_main_screen_uses_compact_lock_button(tmp_path) -> None:
     ]
     assert len(lock_buttons) == 1
     assert lock_buttons[0].tooltip == "锁定"
+
+
+def test_vault_new_entry_uses_dialog_instead_of_persistent_form(tmp_path) -> None:
+    state = SecureBoxAppState.create(tmp_path / "securebox.sqlite3")
+    state.session = state.auth_service.initialize("correct horse battery staple")
+    state.lock_service.unlock()
+    page = FakePage()
+    app = SecureBoxFletApp(page, state)
+
+    app.render()
+
+    page_field_labels = {field.label for field in find_controls(page, ft.TextField)}
+    assert "标题" not in page_field_labels
+    assert "用户名" not in page_field_labels
+
+    new_buttons = [
+        button for button in find_controls(page, ft.FilledButton) if button.data == "new-entry"
+    ]
+    assert len(new_buttons) == 1
+    new_buttons[0].on_click(None)
+
+    dialog_fields = {
+        field.label: field for field in find_controls(page, ft.TextField) if field.data
+    }
+    assert {"标题", "用户名", "密码", "URL", "备注"} <= set(dialog_fields)
+    dialog_fields["标题"].value = "Email"
+    dialog_fields["用户名"].value = "alice"
+    dialog_fields["密码"].value = "secret-password"
+    save_button = next(
+        button for button in find_controls(page, ft.FilledButton) if button.data == "save-entry"
+    )
+    save_button.on_click(None)
+
+    entries = VaultService(state.connection, state.session.data_key).list_entries()
+    assert len(entries) == 1
+    assert entries[0].title == "Email"
+    assert entries[0].username == "alice"
+
+
+def test_vault_edit_entry_uses_prefilled_dialog(tmp_path) -> None:
+    state = SecureBoxAppState.create(tmp_path / "securebox.sqlite3")
+    state.session = state.auth_service.initialize("correct horse battery staple")
+    state.lock_service.unlock()
+    entry = VaultService(state.connection, state.session.data_key).create_entry(
+        PasswordEntryDraft(
+            title="Email",
+            username="alice",
+            password="secret-password",
+            url="https://example.com",
+        )
+    )
+    page = FakePage()
+    app = SecureBoxFletApp(page, state)
+
+    app.render()
+
+    edit_button = next(
+        button for button in find_controls(page, ft.IconButton) if button.data == "edit-entry"
+    )
+    edit_button.on_click(None)
+
+    dialog_fields = {
+        field.data: field for field in find_controls(page, ft.TextField) if field.data
+    }
+    assert dialog_fields["entry-title"].value == "Email"
+    assert dialog_fields["entry-username"].value == "alice"
+
+    dialog_fields["entry-username"].value = "bob"
+    save_button = next(
+        button for button in find_controls(page, ft.FilledButton) if button.data == "save-entry"
+    )
+    save_button.on_click(None)
+
+    updated = VaultService(state.connection, state.session.data_key).get_entry(entry.id)
+    assert updated.username == "bob"
 
 
 def test_vault_copy_button_copies_password_not_url(tmp_path) -> None:

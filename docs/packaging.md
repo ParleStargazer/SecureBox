@@ -100,3 +100,12 @@ Android APK 构建需要额外验证：
 
 如果 Android 打包因为二进制依赖失败，优先保留 Windows exe 作为主交付，并在报告中说明 APK 是跨端扩展目标及其依赖限制。
 
+## 构建故障记录
+
+构建验证过程记录在：
+
+```text
+docs/build-verification.md
+```
+
+如果 Windows 构建在 Flutter SDK 下载阶段出现 `zipfile.BadZipFile: File is not a zip file`，说明下载到的 Flutter 归档不完整或不是有效 zip。可以清理 Flet 构建缓存后重试，或手动安装 Flet CLI 要求的 Flutter SDK 版本后再执行构建命令。

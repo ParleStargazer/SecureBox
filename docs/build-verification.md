@@ -138,11 +138,13 @@ SecureBox 仍按本地离线密码保险箱设计，不提供 Web 版本，不�
 源码短启动验证：python -m securebox 启动 10 秒后仍保持运行，stderr 无异常。
 Windows bundle 验证：更新 data\flutter_assets\app\app.zip 和 app.zip.hash 后，SecureBox.exe 启动 8 秒后仍保持运行，console.log 为空。
 Windows zip 验证：C:\Users\Parle\SecureBox-windows-x64-20260602.zip 内部 app.zip 已确认包含 ft.Alignment(0, 0)、ft.Border、ft.TabBar、ft.TabBarView。
-Windows app.zip SHA256：7d7649f7715ba6250d4b97b333585719442c2aa16615e16bc8ba472c568bb5d8。
-Android APK 验证：重新执行 flet build apk，日志显示 [19:42:05] Built .apk for Android OK。
+Windows app.zip SHA256：aa0c72a9322e9b45d1524277b0a22cf8830ad5617f1bf4023c23e1408eafd328。
+Android APK 验证：重新执行 flet build apk，日志显示 [19:51:47] Built .apk for Android OK。
 Android APK 内容验证：APK 内部 assets\flutter_assets\app\app.zip 已确认包含 ft.Alignment(0, 0)、ft.Border、ft.TabBar、ft.TabBarView。
-Android APK app.zip.hash：c9c6ce0db915b09dd4e412d3f4b9c545cd03eed54c16899d672d3a9440eb38cd。
+Android APK app.zip.hash：b498828cffc13fd441366f01e1ba6a54e46621467b075106094a17d252d2d4a3。
 Android APK 签名验证：apksigner verify --print-certs 通过。
-Android APK 新 SHA256：3163E80ECF0BD70736BF2919FA53F79B2A911179B5B0A32BFA0F759DE985B9DB。
-真机/模拟器安装验证：当前 adb devices 无设备连接；用户已手动确认本次 exe/apk 启动后能显示界面。
+Android APK 新 SHA256：75669B0908F5AF3D4BA8AC29DB2469B083FC78DBE82C354305271D5B1AA8E1AD。
+真机/模拟器安装验证：当前 adb devices 无设备连接；用户已手动确认 exe 启动后能显示界面，apk 仍需安装新包复测。
+Android 黑屏补充修复：移动端改用 Flet 提供的 FLET_APP_STORAGE_DATA 私有数据目录保存数据库，避免依赖 Android Python 运行时的 Path.home()；移动端不再设置桌面窗口宽高；启动阶段异常会尽量渲染为 SecureBox startup error 页面，便于后续定位。
+数据保存位置：Windows exe 默认保存到当前用户目录 C:\Users\<用户名>\.securebox\securebox.sqlite3，不保存在 exe 所在目录；Android apk 保存到应用私有数据目录的 securebox.sqlite3，通常类似 /data/user/0/com.parlestargazer.securebox/app_flutter/securebox.sqlite3，普通文件管理器不可直接访问。
 ```

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 
 import flet as ft
 
-from securebox.config import DEFAULT_DATA_DIR, DEFAULT_DB_NAME
+from securebox.config import DEFAULT_DB_NAME, get_default_data_dir
 from securebox.crypto.file_crypto import decrypt_file, encrypt_file
 from securebox.db.connection import connect_database
 from securebox.db.schema import initialize_schema
@@ -46,7 +47,7 @@ class SecureBoxAppState:
 
     @classmethod
     def create(cls, db_path: str | Path | None = None) -> SecureBoxAppState:
-        path = Path(db_path) if db_path is not None else DEFAULT_DATA_DIR / DEFAULT_DB_NAME
+        path = Path(db_path) if db_path is not None else get_default_data_dir() / DEFAULT_DB_NAME
         connection = connect_database(path)
         initialize_schema(connection)
         return cls(
@@ -550,9 +551,34 @@ def build_app(page: ft.Page, db_path: str | Path | None = None) -> SecureBoxFlet
     return app
 
 
+def show_startup_error(page: ft.Page, exc: Exception) -> None:
+    page.controls.clear()
+    page.add(
+        ft.Container(
+            ft.Column(
+                [
+                    ft.Text("SecureBox startup error", size=22, weight=ft.FontWeight.BOLD),
+                    ft.Text(str(exc), selectable=True),
+                ],
+                spacing=12,
+            ),
+            padding=24,
+        )
+    )
+    page.update()
+
+
 def run_app(db_path: str | Path | None = None) -> None:
     """Run the local Flet desktop application.
 
     SecureBox intentionally does not expose a Web server entry point.
     """
-    ft.app(target=lambda page: build_app(page, db_path), view=ft.AppView.FLET_APP)
+
+    def target(page: ft.Page) -> None:
+        try:
+            build_app(page, db_path)
+        except Exception as exc:
+            traceback.print_exc()
+            show_startup_error(page, exc)
+
+    ft.app(target=target, view=ft.AppView.FLET_APP)

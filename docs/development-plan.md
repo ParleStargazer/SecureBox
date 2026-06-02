@@ -17,7 +17,7 @@ SecureBox 是一个本地密码管理器与加密工具，核心目标是演示�
 
 ```text
 Python 3.12
-Tkinter 桌面界面
+Flet 跨端界面
 SQLite 本地数据库
 cryptography 加密库
 argon2-cffi 密钥派生
@@ -28,8 +28,10 @@ ruff 代码风格检查
 
 说明：
 
-- Tkinter 属于 Python 标准库，适合作业项目快速完成 GUI。
-- 如果后期需要更精致界面，可以单独创建分支切换到 PyQt 或 PySide。
+- Flet 用 Python 编写界面，底层基于 Flutter，适合做比传统桌面界面更精美的跨端体验。
+- 本项目只交付本地应用形态：Windows 桌面 exe 和 Android apk。
+- 本项目明确不提供 Web 版，不部署远程 Web 服务，避免本地密码保险箱变成网络应用后引入新的攻击面、认证边界、传输安全和服务端存储风险。
+- UI 层只负责展示和交互，`crypto`、`db`、`services` 保持纯 Python 业务模块，避免安全逻辑绑定在界面框架中。
 - SQLite 不做整库加密，项目重点放在字段级加密与密钥管理。
 - `requirements.txt` 只管理 pip 包，安装时使用 `python -m pip install -r requirements.txt`。
 
@@ -81,8 +83,11 @@ SecureBox/
       lock_service.py
     ui/
       __init__.py
-      login_window.py
-      main_window.py
+      app.py
+      routes.py
+      theme.py
+      login_view.py
+      main_view.py
       vault_view.py
       generator_view.py
       text_crypto_view.py
@@ -428,14 +433,15 @@ chunk:
 
 - 文件加密功能独立于保险箱 CRUD，可以整体回滚。
 
-## 13. 阶段 8：桌面 GUI
+## 13. 阶段 8：Flet 本地 GUI
 
-目标：把已有 service 接入可演示界面。
+目标：把已有 service 接入 Flet 界面，提供更精美的本地跨端体验。
 
 建议 commits：
 
 ```text
-feat(ui): add login and initialization windows
+feat(ui): add flet app shell and theme
+feat(ui): add login and initialization views
 feat(ui): add vault list and detail layout
 feat(ui): wire create update delete entry actions
 feat(ui): add password reveal and copy actions
@@ -445,11 +451,13 @@ test(ui): add minimal smoke tests for view construction
 
 界面建议：
 
+- 使用 Flet 的 `Page`、`Tabs`、`NavigationRail`、`Dialog` 等组件组织页面。
 - 登录页只显示必要输入。
 - 主界面用标签页区分保险箱、生成器、文本加密、文件加密。
 - 密码默认隐藏，点击按钮临时显示。
 - 复制密码后自动计时清空剪贴板。
 - 解密失败统一提示“主密码错误或数据已损坏”。
+- 不实现 Web 入口，不提供浏览器访问地址，不把保险箱暴露成 HTTP 服务。
 
 验收标准：
 
@@ -457,6 +465,9 @@ test(ui): add minimal smoke tests for view construction
 - 错误主密码不能进入。
 - 复制密码后定时清空剪贴板。
 - 各页面操作不会把明文写入日志。
+- Windows 桌面模式可运行。
+- Android 界面布局在小屏幕下可正常操作。
+- 浏览器 Web 模式不作为交付目标，不写入演示流程。
 
 回滚边界：
 
@@ -503,7 +514,8 @@ test(security): cover lock and retry timing logic
 feat(export): add encrypted export and import
 docs(report): add security design report draft
 docs(demo): add demonstration checklist
-chore(package): add pyinstaller packaging notes
+chore(package): add flet windows exe packaging notes
+chore(package): add flet android apk packaging notes
 ```
 
 实现建议：
@@ -511,6 +523,9 @@ chore(package): add pyinstaller packaging notes
 - 默认不允许明文导出。
 - 导出文件继续使用 AES-GCM 保护。
 - 报告中明确说明威胁模型、KDF、AEAD、nonce、AAD、SQLite 元数据限制。
+- 报告中明确说明不支持 Web 版，避免网络服务端、传输链路、远程认证、浏览器缓存等额外安全边界。
+- 打包目标只包括 Windows exe 和 Android apk。
+- Android apk 构建需要额外验证 `cryptography`、`argon2-cffi` 等二进制依赖是否能被 Flet 打包链正确包含。
 - 演示时准备数据库泄露但无法直接看到密码的截图。
 
 验收标准：
@@ -519,6 +534,9 @@ chore(package): add pyinstaller packaging notes
 - 导入导出后记录一致。
 - 报告能解释每个安全设计的原因。
 - 演示清单覆盖初始化、登录、增删改查、篡改检测、文件加密。
+- Windows exe 可以启动并完成核心流程。
+- Android apk 可以安装并完成至少初始化、登录、查看保险箱的核心演示流程。
+- 不提供 Web URL，不演示 Web 部署。
 
 回滚边界：
 
@@ -546,6 +564,7 @@ fix: address final test and demo issues
 - conda 环境可创建
 - pip 依赖可安装
 - pytest 全部通过
+- Flet 桌面运行入口可启动
 
 安全：
 - 数据库中看不到明文密码
@@ -567,6 +586,9 @@ fix: address final test and demo issues
 - 文件加解密
 - 自动锁定
 - 剪贴板清空
+- Windows exe 打包
+- Android apk 打包
+- 不支持 Web 版
 
 文档：
 - 开发计划
@@ -586,11 +608,11 @@ fix: address final test and demo issues
 4. 登录与初始化
 5. 密码记录 CRUD
 6. 密码生成与强度检测
-7. GUI 主流程
+7. Flet GUI 主流程
 8. 文本加密
 9. 文件加密
 10. 自动锁定与剪贴板清理
-11. 导出、报告、打包
+11. 导出、报告、Windows exe 和 Android apk 打包
 ```
 
 原因：

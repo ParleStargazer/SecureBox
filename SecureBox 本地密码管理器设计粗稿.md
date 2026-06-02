@@ -6,9 +6,19 @@
 SecureBox 本地密码管理器 + 加密工具
 
 技术栈：
-Python + PyQt / Tkinter
+Python + Flet
 SQLite 本地数据库
 cryptography 库
+```
+
+交付形式：
+
+```text
+仅支持本地应用形态：
+- Windows 桌面 exe
+- Android apk
+
+不提供 Web 版，不部署远程服务，避免把本地密码保险箱扩展成网络应用后引入新的攻击面和安全边界问题。
 ```
 
 整体架构：

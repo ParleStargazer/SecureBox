@@ -22,7 +22,7 @@ conda activate securebox
 
 ```powershell
 conda activate securebox
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 ```
 
 ## 运行
@@ -64,3 +64,5 @@ python -m ruff check .
 ## Flet 构建入口
 
 Flet 0.85 的 `build` 命令要求入口文件位于应用根目录，因此仓库根目录提供了一个很薄的 `main.py`，实际逻辑仍在 `securebox.main` 和 `securebox.ui.app` 中。
+
+打包命令、Windows/Android 验证状态和本地交付物位置见 `docs/packaging.md` 与 `docs/build-verification.md`。当前 Windows/Flet/serious_python 组合对中文路径不稳定，构建和运行交付物建议放在纯英文路径。

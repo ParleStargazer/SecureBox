@@ -9,3 +9,20 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.flet.app]
+exclude = [
+    ".git",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    ".venv",
+    ".vscode",
+    ".idea",
+    "backups",
+    "build",
+    "data",
+    "dist",
+    "docs",
+    "exports",
+    "tests",
+]

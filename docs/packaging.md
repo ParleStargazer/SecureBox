@@ -32,6 +32,16 @@ flet serve
 在 `securebox` conda 环境中执行：
 
 ```powershell
+python -m pip install -r requirements-dev.txt
+```
+
+Windows/Flet/serious_python 在当前环境下对中文路径不稳定，建议将源码复制或克隆到纯英文路径再构建，例如：
+
+```text
+C:\Users\Parle\SecureBox-build
+```
+
+```powershell
 flet build windows . `
   --module-name main `
   --project securebox `
@@ -47,6 +57,10 @@ flet build windows . `
 build/windows
 ```
 
+打包时会读取 `pyproject.toml` 中的 `tool.flet.app.exclude`，自动排除 `.git`、测试缓存、测试目录、文档目录和本地数据目录，避免把开发文件或本地明文/密文运行数据放进交付包。
+
+如果 Windows install 阶段报 `vcruntime140_1.dll` 找不到，应优先安装或修复 Microsoft Visual C++ Redistributable，并确保 CMake/VS 工具链能访问 64 位 VC++ runtime。当前本机验证中，生成脚本对 `C:\Windows\System32\vcruntime140_1.dll` 的访问受工具链位数影响，使用英文临时目录并改为 `C:\Windows\Sysnative\vcruntime140_1.dll` 后完成了本地 bundle 验证。
+
 验收：
 
 ```text
@@ -60,6 +74,19 @@ build/windows
 ## Android apk
 
 在 `securebox` conda 环境中执行：
+
+```powershell
+python -m pip install -r requirements-dev.txt
+```
+
+Android 构建必须预先准备：
+
+```text
+Android SDK command-line tools
+Android platform / build-tools / platform-tools
+ANDROID_HOME 环境变量
+已接受 Android SDK licenses
+```
 
 ```powershell
 flet build apk . `

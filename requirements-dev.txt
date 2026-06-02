@@ -1,0 +1,4 @@
+-r requirements.txt
+flet-cli>=0.83.0
+pytest>=8.2.0
+ruff>=0.5.0

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -11,7 +12,10 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from securebox.config import CRYPTO_VERSION
 from securebox.utils.encoding import b64decode, b64encode
-from securebox.utils.errors import AuthenticationFailedError, UnsupportedCryptoVersionError
+from securebox.utils.errors import (
+    AuthenticationFailedError,
+    UnsupportedCryptoVersionError,
+)
 
 AES_GCM_ALGORITHM = "AES-256-GCM"
 KEY_SIZE = 32
@@ -74,6 +78,14 @@ def encrypt_text(key: bytes, plaintext: str, aad: bytes = b"") -> EncryptedBlob:
 
 def decrypt_text(key: bytes, blob: EncryptedBlob, aad: bytes = b"") -> str:
     return decrypt_bytes(key, blob, aad).decode("utf-8")
+
+
+def blob_to_json(blob: EncryptedBlob) -> str:
+    return json.dumps(blob.to_dict(), separators=(",", ":"))
+
+
+def blob_from_json(payload: str) -> EncryptedBlob:
+    return EncryptedBlob.from_dict(json.loads(payload))
 
 
 def _validate_key(key: bytes) -> None:

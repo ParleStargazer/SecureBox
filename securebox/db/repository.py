@@ -91,29 +91,67 @@ class PasswordEntryRepository:
     def __init__(self, connection: sqlite3.Connection) -> None:
         self._connection = connection
 
-    def create(self, entry: EncryptedEntryInput) -> PasswordEntryRecord:
+    def next_id(self) -> int:
+        row = self._connection.execute(
+            "SELECT seq FROM sqlite_sequence WHERE name = ?", ("password_entries",)
+        ).fetchone()
+        if row is None:
+            max_row = self._connection.execute(
+                "SELECT COALESCE(MAX(id), 0) FROM password_entries"
+            ).fetchone()
+            return int(max_row[0]) + 1
+        return int(row["seq"]) + 1
+
+    def create(
+        self,
+        entry: EncryptedEntryInput,
+        entry_id: int | None = None,
+    ) -> PasswordEntryRecord:
         now = utc_now_iso()
-        cursor = self._connection.execute(
-            """
-            INSERT INTO password_entries (
-                title_enc, username_enc, password_enc, url_enc, note_enc,
-                created_at, updated_at, crypto_version
+        if entry_id is None:
+            cursor = self._connection.execute(
+                """
+                INSERT INTO password_entries (
+                    title_enc, username_enc, password_enc, url_enc, note_enc,
+                    created_at, updated_at, crypto_version
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    entry.title_enc,
+                    entry.username_enc,
+                    entry.password_enc,
+                    entry.url_enc,
+                    entry.note_enc,
+                    now,
+                    now,
+                    CRYPTO_VERSION,
+                ),
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                entry.title_enc,
-                entry.username_enc,
-                entry.password_enc,
-                entry.url_enc,
-                entry.note_enc,
-                now,
-                now,
-                CRYPTO_VERSION,
-            ),
-        )
+            created_id = int(cursor.lastrowid)
+        else:
+            self._connection.execute(
+                """
+                INSERT INTO password_entries (
+                    id, title_enc, username_enc, password_enc, url_enc, note_enc,
+                    created_at, updated_at, crypto_version
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    entry_id,
+                    entry.title_enc,
+                    entry.username_enc,
+                    entry.password_enc,
+                    entry.url_enc,
+                    entry.note_enc,
+                    now,
+                    now,
+                    CRYPTO_VERSION,
+                ),
+            )
+            created_id = entry_id
         self._connection.commit()
-        created_id = int(cursor.lastrowid)
         record = self.get(created_id)
         if record is None:
             raise RuntimeError("Created password entry could not be loaded")
@@ -196,4 +234,3 @@ def _entry_from_row(row: sqlite3.Row) -> PasswordEntryRecord:
         updated_at=row["updated_at"],
         crypto_version=row["crypto_version"],
     )
-

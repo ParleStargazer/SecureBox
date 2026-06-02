@@ -33,7 +33,7 @@ flet serve
 
 ```powershell
 flet build windows . `
-  --module-name securebox.main `
+  --module-name main `
   --project securebox `
   --product SecureBox `
   --artifact SecureBox `
@@ -63,7 +63,7 @@ build/windows
 
 ```powershell
 flet build apk . `
-  --module-name securebox.main `
+  --module-name main `
   --project securebox `
   --product SecureBox `
   --artifact SecureBox `

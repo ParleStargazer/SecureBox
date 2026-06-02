@@ -23,7 +23,7 @@ Windows exe 构建尝试：
 
 ```powershell
 flet build windows . `
-  --module-name securebox.main `
+  --module-name main `
   --project securebox `
   --product SecureBox `
   --artifact SecureBox `
@@ -58,3 +58,9 @@ Flet CLI 在安装 Flutter SDK 3.41.7 时下载到的归档不是有效 zip，
 4. Android apk 仍需额外验证 cryptography 和 argon2-cffi 的二进制依赖兼容性。
 ```
 
+补充：
+
+```text
+Flet 0.85 的 build 入口不支持 dotted module，例如 securebox.main 会被解析为 securebox.py。
+项目已提供根目录 main.py 作为 Flet build 入口，实际逻辑仍委托给 securebox.main。
+```

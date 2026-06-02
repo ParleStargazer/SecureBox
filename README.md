@@ -61,3 +61,6 @@ python -m ruff check .
 - 自动锁定、剪贴板清理、登录失败延迟服务
 - Flet 本地桌面界面
 
+## Flet 构建入口
+
+Flet 0.85 的 `build` 命令要求入口文件位于应用根目录，因此仓库根目录提供了一个很薄的 `main.py`，实际逻辑仍在 `securebox.main` 和 `securebox.ui.app` 中。
